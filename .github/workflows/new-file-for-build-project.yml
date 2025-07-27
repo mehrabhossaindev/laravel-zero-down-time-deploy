@@ -48,9 +48,9 @@ jobs:
         run: |
           cp .env.example .env
 
-          echo "DB_CONNECTION=${{secrets.DB_CONNECTION}}" >> .env
-          echo "DB_HOST=${{secrets.DB_HOST}}" >> .env
-          echo "DB_PORT=${{secrets.DB_PORT}}" >> .env
+          echo "DB_CONNECTION=mysql" >> .env
+          echo "DB_HOST=127.0.0.1" >> .env
+          echo "DB_PORT=3306" >> .env
           echo "DB_DATABASE=${{secrets.DB_DATABASE}}" >> .env
           echo "DB_USERNAME=${{secrets.DB_USERNAME}}" >> .env
           echo "DB_PASSWORD=${{secrets.DB_PASSWORD}}" >> .env
@@ -213,3 +213,114 @@ jobs:
             php artisan cache:clear
             php artisan migrate --force
             
+  deployment:
+    runs-on: ubuntu-latest
+    needs: [build]
+    environment: production
+    if: github.ref == 'refs/heads/main' 
+
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: laravel-app
+          path: .
+
+      - name: Restore .env Files
+        run: |
+          mv env .env
+
+          set_env_var() {
+            VAR_NAME=$1
+            VAR_VALUE=$2
+            if grep -q "^${VAR_NAME}=" .env; then
+              sed -i "s|^${VAR_NAME}=.*|${VAR_NAME}=${VAR_VALUE}|" .env
+            else
+              echo "${VAR_NAME}=${VAR_VALUE}" >> .env
+            fi
+          }
+
+          set_env_var "DB_CONNECTION" "mysql"
+          set_env_var "DB_HOST" "127.0.0.1"
+          set_env_var "DB_PORT" "3306"
+          set_env_var "DB_DATABASE" "${{secrets.DB_DATABASE}}"
+          set_env_var "DB_USERNAME" "${{secrets.DB_USERNAME}}"
+          set_env_var "DB_PASSWORD" "${{secrets.DB_PASSWORD}}"            
+
+
+      - name: Make Cache Folder
+        run: |
+          mkdir -p bootstrap/cache
+          mkdir -p storage/framework/views
+          chmod -R 777 bootstrap/cache
+          chmod -R 777 storage
+
+      - name: Set current timestamp
+        id: vars
+        run: echo "TIMESTAMP=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: Upload to server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.HOST_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "./*"
+          target: "${{ secrets.REMOTE_PATH }}/tmp_deploy/${{ steps.vars.outputs.TIMESTAMP }}"
+
+      
+      - name: SSH into server and deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.HOST_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            export TIMESTAMP=${{ steps.vars.outputs.TIMESTAMP }}
+            export APP_DIR=${{ secrets.REMOTE_PATH }}
+            export RELEASE_DIR=$APP_DIR/releases/$TIMESTAMP
+            export CURRENT_DIR=$APP_DIR/current
+
+            # Lock deployment
+            if [ -f "$APP_DIR/deploy.lock" ]; then
+              echo "🔒 Deployment in progress. Aborting..."
+              exit 1
+            fi
+            touch $APP_DIR/deploy.lock
+
+            # Backup current release
+            if [ -L "$CURRENT_DIR" ]; then
+              cp -R "$(readlink -f $CURRENT_DIR)" "$APP_DIR/backups/backup_$TIMESTAMP"
+              echo "✅ Backup complete."
+            fi
+
+            # Move code to release folder
+            mkdir -p $RELEASE_DIR
+            cp -R $APP_DIR/tmp_deploy/$TIMESTAMP/* $RELEASE_DIR
+
+            # Shared .env
+            if [ -f "$APP_DIR/shared/.env" ]; then
+              ln -nfs $APP_DIR/shared/.env $RELEASE_DIR/.env
+            fi
+
+            # Set permissions
+            chmod -R 775 $RELEASE_DIR/storage $RELEASE_DIR/bootstrap/cache
+            chown -R ${{ secrets.DEPLOY_USER || 'www-data' }}:$RELEASE_DIR
+
+            # Run Laravel commands
+            cd $RELEASE_DIR
+            php artisan config:clear
+            php artisan cache:clear
+            php artisan route:clear
+            php artisan view:clear
+            php artisan config:cache
+            php artisan migrate --force
+
+            # Symlink new release
+            ln -nfs $RELEASE_DIR $CURRENT_DIR
+            echo "✅ Deployment completed successfully at $RELEASE_DIR"
+
+            # Remove lock
+            rm -f $APP_DIR/deploy.lock 
+          

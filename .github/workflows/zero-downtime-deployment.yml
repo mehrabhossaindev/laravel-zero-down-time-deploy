@@ -309,12 +309,13 @@ jobs:
 
             # Set permissions
             chmod -R 775 $RELEASE_DIR/storage $RELEASE_DIR/bootstrap/cache
-            chown -R ${{ secrets.DEPLOY_USER || 'www-data' }}:${{ secrets.DEPLOY_USER || 'www-data' }} $RELEASE_DIR
+            chown -R www-data:www-data $RELEASE_DIR
 
             
             # Run Laravel commands
             cd $RELEASE_DIR
             mv env .env
+            php artisan key:generate
             php artisan config:clear
             php artisan cache:clear
             php artisan route:clear

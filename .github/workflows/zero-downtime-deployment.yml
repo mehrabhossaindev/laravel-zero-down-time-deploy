@@ -324,6 +324,7 @@ jobs:
 
             # Symlink new release
             ln -nfs $RELEASE_DIR $CURRENT_DIR
+            echo "ln -nfs $RELEASE_DIR $CURRENT_DIR"
             echo "✅ Deployment completed successfully at $RELEASE_DIR"
 
             # Remove lock

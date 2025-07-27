@@ -297,38 +297,31 @@ jobs:
               echo "✅ Backup complete."
             fi
 
-            # Prepare directories
-            sudo mkdir -p $APP_DIR/{releases,shared,backups,tmp_deploy}
-            sudo chown -R ${{ secrets.HOST_USERNAME }}:www-data $APP_DIR
-            sudo chmod -R 775 $APP_DIR
-
             # Move code to release folder
             mkdir -p $RELEASE_DIR
+            sudo chown -R ubuntu:www-data $APP_DIR
+            sudo chmod -R 775 $APP_DIR
             cp -R $APP_DIR/tmp_deploy/$TIMESTAMP/* $RELEASE_DIR
 
-            # Shared files
-            [ -f "$APP_DIR/shared/.env" ] && ln -nfs $APP_DIR/shared/.env $RELEASE_DIR/.env
-            [ -f "$APP_DIR/shared/.htaccess" ] && ln -nfs $APP_DIR/shared/.htaccess $RELEASE_DIR/.htaccess
-
-            # Set permissions (skip node_modules)
-            sudo chown -R ${{ secrets.HOST_USERNAME }}:www-data $RELEASE_DIR
-            sudo find $RELEASE_DIR -type d -exec chmod 775 {} \;
-            sudo find $RELEASE_DIR -type f -exec chmod 664 {} \;
-            
-            # Special permissions for storage and bootstrap
-            sudo chmod -R 777 $RELEASE_DIR/storage $RELEASE_DIR/bootstrap/cache
-            sudo find $RELEASE_DIR/storage -type d -exec chmod g+s {} \;
-
-            # Handle node_modules separately
-            if [ -d "$RELEASE_DIR/node_modules" ]; then
-              sudo chown -R ${{ secrets.HOST_USERNAME }}:www-data $RELEASE_DIR/node_modules || true
-              sudo find $RELEASE_DIR/node_modules -type d -exec chmod 755 {} \; || true
-              sudo find $RELEASE_DIR/node_modules -type f -exec chmod 644 {} \; || true
+            # Shared .env
+            if [ -f "$APP_DIR/shared/.env" ]; then
+              ln -nfs $APP_DIR/shared/.env $RELEASE_DIR/.env
             fi
+
+            # Shared .htaccess
+            if [ -f "$APP_DIR/shared/.htaccess" ]; then
+              ln -nfs $APP_DIR/shared/.htaccess $RELEASE_DIR/.htaccess
+            fi
+
+            # Set permissions
+            chown -R ubuntu:www-data $RELEASE_DIR
+            #mkdir -p $RELEASE_DIR/storage/logs
+            chmod -R 775 $RELEASE_DIR/storage $RELEASE_DIR/bootstrap/cache
+            find $RELEASE_DIR/storage -type d -exec chmod g+s {} \;
             
             # Run Laravel commands
             cd $RELEASE_DIR
-            [ -f "env" ] && mv env .env
+            mv env .env
             php artisan key:generate
             php artisan config:clear
             php artisan cache:clear

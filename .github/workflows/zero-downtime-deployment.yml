@@ -303,8 +303,6 @@ jobs:
             mkdir -p $RELEASE_DIR
             cp -R $APP_DIR/tmp_deploy/$TIMESTAMP/* $RELEASE_DIR
 
-            #env file update/rename
-            mv env .env
 
             # Shared .env
             if [ -f "$APP_DIR/shared/.env" ]; then
@@ -318,6 +316,7 @@ jobs:
             
             # Run Laravel commands
             cd $RELEASE_DIR
+            mv env .env
             php artisan config:clear
             php artisan cache:clear
             php artisan route:clear

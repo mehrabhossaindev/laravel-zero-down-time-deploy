@@ -313,7 +313,7 @@ jobs:
 
             # Set permissions
             chown -R ubuntu:www-data $RELEASE_DIR
-            mkdir -p $RELEASE_DIR/storage/logs
+            #mkdir -p $RELEASE_DIR/storage/logs
             chmod -R 775 $RELEASE_DIR/storage $RELEASE_DIR/bootstrap/cache
             find $RELEASE_DIR/storage -type d -exec chmod g+s {} \;
             

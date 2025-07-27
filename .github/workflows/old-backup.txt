@@ -301,6 +301,7 @@ jobs:
             mkdir -p $RELEASE_DIR
             cp -R $APP_DIR/tmp_deploy/$TIMESTAMP/* $RELEASE_DIR
 
+
             # Shared .env
             if [ -f "$APP_DIR/shared/.env" ]; then
               ln -nfs $APP_DIR/shared/.env $RELEASE_DIR/.env
@@ -312,10 +313,10 @@ jobs:
             fi
 
             # Set permissions
-            mkdir -p $RELEASE_DIR/storage/logs
-            chown -R ubuntu:www-data $RELEASE_DIR
+            mkdir $RELEASE_DIR/storage/logs
             chmod -R 775 $RELEASE_DIR/storage $RELEASE_DIR/bootstrap/cache
-            find $RELEASE_DIR/storage -type d -exec chmod g+s {} \;
+            chown -R ubuntu:ubuntu $RELEASE_DIR
+
             
             # Run Laravel commands
             cd $RELEASE_DIR
@@ -330,8 +331,13 @@ jobs:
 
             # Symlink new release
             ln -nfs $RELEASE_DIR $CURRENT_DIR
+            echo "ln -nfs $RELEASE_DIR $CURRENT_DIR"
             echo "✅ Deployment completed successfully at $RELEASE_DIR"
 
+            #change Permission
+            chown -R www-data:www-data $RELEASE_DIR
+            chmod -R 775 $RELEASE_DIR/storage $RELEASE_DIR/bootstrap/cache
+
             # Remove lock
-            rm -f $APP_DIR/deploy.lock
+            rm -f $APP_DIR/deploy.lock 
           

@@ -298,6 +298,8 @@ jobs:
             fi
 
             # Move code to release folder
+            sudo chown -R ubuntu:www-data $APP_DIR
+            sudo chmod -R 775 $APP_DIR
             mkdir -p $RELEASE_DIR
             cp -R $APP_DIR/tmp_deploy/$TIMESTAMP/* $RELEASE_DIR
 

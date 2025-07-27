@@ -229,7 +229,6 @@ jobs:
       - name: Restore .env Files
         run: |
           mv env .env
-
           set_env_var() {
             VAR_NAME=$1
             VAR_VALUE=$2
@@ -246,10 +245,9 @@ jobs:
           set_env_var "DB_DATABASE" "${{secrets.DB_DATABASE}}"
           set_env_var "DB_USERNAME" "${{secrets.DB_USERNAME}}"
           set_env_var "DB_PASSWORD" "${{secrets.DB_PASSWORD}}"
-
           mv .env env
-          
           ls -la
+          cat env
 
 
       - name: Make Cache Folder

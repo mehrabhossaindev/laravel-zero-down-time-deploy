@@ -307,7 +307,13 @@ jobs:
               ln -nfs $APP_DIR/shared/.env $RELEASE_DIR/.env
             fi
 
+            # Shared .htaccess
+            if [ -f "$APP_DIR/shared/.htaccess" ]; then
+              ln -nfs $APP_DIR/shared/.htaccess $RELEASE_DIR/.htaccess
+            fi
+
             # Set permissions
+            mkdir $RELEASE_DIR/storage/logs
             chmod -R 775 $RELEASE_DIR/storage $RELEASE_DIR/bootstrap/cache
             chown -R ubuntu:ubuntu $RELEASE_DIR
 

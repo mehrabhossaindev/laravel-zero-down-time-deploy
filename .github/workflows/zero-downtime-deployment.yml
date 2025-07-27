@@ -243,8 +243,8 @@ jobs:
           set_env_var "DB_HOST" "127.0.0.1"
           set_env_var "DB_PORT" "3306"
           set_env_var "DB_DATABASE" "${{secrets.DB_DATABASE}}"
-          set_env_var "DB_USERNAME" "${{secrets.DB_USERNAME}}"
-          set_env_var "DB_PASSWORD" "${{secrets.DB_PASSWORD}}"
+          set_env_var "DB_USERNAME" "${{secrets.MYSQL_USER}}"
+          set_env_var "DB_PASSWORD" "${{secrets.MYSQL_PASSWORD}}"
           mv .env env
           ls -la
           cat env

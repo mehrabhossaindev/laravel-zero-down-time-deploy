@@ -1,10 +1,11 @@
-name: New File for Laravel Project Build and Test
+name: Zero Downtime Deployment
 
 on:
   push:
     branches:
       - dev
       - staging
+      - main
 
   workflow_dispatch:
 

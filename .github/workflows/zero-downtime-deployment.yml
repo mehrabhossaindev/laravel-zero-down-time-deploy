@@ -309,7 +309,7 @@ jobs:
 
             # Set permissions
             chmod -R 775 $RELEASE_DIR/storage $RELEASE_DIR/bootstrap/cache
-            chown -R www-data:www-data $RELEASE_DIR
+            chown -R ubuntu:ubuntu $RELEASE_DIR
 
             
             # Run Laravel commands

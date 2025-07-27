@@ -245,7 +245,9 @@ jobs:
           set_env_var "DB_PORT" "3306"
           set_env_var "DB_DATABASE" "${{secrets.DB_DATABASE}}"
           set_env_var "DB_USERNAME" "${{secrets.DB_USERNAME}}"
-          set_env_var "DB_PASSWORD" "${{secrets.DB_PASSWORD}}"            
+          set_env_var "DB_PASSWORD" "${{secrets.DB_PASSWORD}}"
+          
+          ls -la
 
 
       - name: Make Cache Folder
@@ -300,9 +302,9 @@ jobs:
             cp -R $APP_DIR/tmp_deploy/$TIMESTAMP/* $RELEASE_DIR
 
             # Shared .env
-            if [ -f "$APP_DIR/shared/.env" ]; then
-              ln -nfs $APP_DIR/shared/.env $RELEASE_DIR/.env
-            fi
+            #if [ -f "$APP_DIR/shared/.env" ]; then
+            #  ln -nfs $APP_DIR/shared/.env $RELEASE_DIR/.env
+            #fi
 
             # Set permissions
             chmod -R 775 $RELEASE_DIR/storage $RELEASE_DIR/bootstrap/cache

@@ -1,0 +1,215 @@
+name: New File for Laravel Project Build and Test
+
+on:
+  push:
+    branches:
+      - dev
+      - staging
+
+  workflow_dispatch:
+
+# env:
+#   APP_ENV: production
+#   DB_PORT: 3306
+
+
+jobs:
+  
+  build:
+    runs-on: ubuntu-latest
+
+    environment: dev
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, bcmath, ctype, fileinfo, json, tokenizer, openssl, pdo, pdo_mysql
+          tools: composer:v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install NPM & Build Assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install PHP Dependencies
+        run: composer install --prefer-dist --no-interaction --no-scripts
+
+      - name: Laravel Env Setup
+        run: |
+          cp .env.example .env
+
+          echo "DB_CONNECTION=${{secrets.DB_CONNECTION}}" >> .env
+          echo "DB_HOST=${{secrets.DB_HOST}}" >> .env
+          echo "DB_PORT=${{secrets.DB_PORT}}" >> .env
+          echo "DB_DATABASE=${{secrets.DB_DATABASE}}" >> .env
+          echo "DB_USERNAME=${{secrets.DB_USERNAME}}" >> .env
+          echo "DB_PASSWORD=${{secrets.DB_PASSWORD}}" >> .env
+
+          cp .env .env.testing
+ 
+
+
+      - name: Create Artifact Folder
+        run: |
+          mkdir -p artifact
+          cp -r app bootstrap config database public resources routes storage tests artisan composer.* package-lock.json package.json phpunit.xml artifact/
+          cp -r vendor node_modules artifact/
+          cp .env artifact/env
+          cp .env.testing artifact/env.testing
+
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: laravel-app
+          path: artifact
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/dev'
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: laravel_test
+          MYSQL_USER: laravel
+          MYSQL_PASSWORD: password
+
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: laravel-app
+          path: .
+
+      - name: Restore .env Files
+        run: |
+          mv env .env
+          mv env.testing .env.testing
+
+      - name: Make Cache Folder
+        run: |
+          mkdir -p bootstrap/cache
+          mkdir -p storage/framework/views
+          chmod -R 777 bootstrap/cache
+          chmod -R 777 storage
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, bcmath, ctype, fileinfo, json, tokenizer, openssl, pdo, pdo_mysql
+          tools: composer:v2
+
+      - name: Sleep 15 Second
+        run: | 
+          sleep 15
+          ls -la
+
+      - name: Generate Application Key
+        run: |
+          php artisan key:generate
+
+
+      - name: Run Migrations & Tests
+        run: |
+          cat .env.testing
+          echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+          cat .env
+          php artisan migrate --env=testing --force
+          php artisan test --env=testing
+
+
+  staging:
+     runs-on: ubuntu-latest
+     needs: [build]
+     environment: staging
+     
+     if: github.ref == 'refs/heads/staging'
+
+     steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: laravel-app
+          path: .
+
+      - name: Restore .env Files
+        run: |
+          mv env .env
+
+          set_env_var() {
+            VAR_NAME=$1
+            VAR_VALUE=$2
+            if grep -q "^${VAR_NAME}=" .env; then
+              sed -i "s|^${VAR_NAME}=.*|${VAR_NAME}=${VAR_VALUE}|" .env
+            else
+              echo "${VAR_NAME}=${VAR_VALUE}" >> .env
+            fi
+          }
+
+          set_env_var "DB_CONNECTION" "mysql"
+          set_env_var "DB_HOST" "127.0.0.1"
+          set_env_var "DB_PORT" "3306"
+          set_env_var "DB_DATABASE" "${{secrets.DB_DATABASE}}"
+          set_env_var "DB_USERNAME" "${{secrets.DB_USERNAME}}"
+          set_env_var "DB_PASSWORD" "${{secrets.DB_PASSWORD}}"            
+
+
+      - name: Make Cache Folder
+        run: |
+          mkdir -p bootstrap/cache
+          mkdir -p storage/framework/views
+          chmod -R 777 bootstrap/cache
+          chmod -R 777 storage
+
+
+
+      - name: Push Code
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.HOST_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "./*"
+          target: "/var/www/html/laravel-project-build"
+          
+
+      - name: SSH into server and deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.HOST_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            chown -R ${{ secrets.HOST_USERNAME }}:${{ secrets.HOST_USERNAME }} /var/www/html/laravel-project-build/bootstrap/cache
+            chown -R ${{ secrets.HOST_USERNAME }}:${{ secrets.HOST_USERNAME }} /var/www/html/laravel-project-build/storage/framework/views
+            mkdir -p /var/www/html/laravel-project-build/bootstrap/cache
+            mkdir -p /var/www/html/laravel-project-build/storage/framework/views
+            chmod -R 777 /var/www/html/laravel-project-build/bootstrap/cache
+            chmod -R 777 /var/www/html/laravel-project-build/storage
+            chmod -R 777 /var/www/html/laravel-project-build/storage/framework/views
+
+            cd /var/www/html/laravel-project-build
+            php artisan key:generate
+            php artisan config:clear
+            php artisan cache:clear
+            php artisan migrate --force
+            

@@ -246,6 +246,8 @@ jobs:
           set_env_var "DB_DATABASE" "${{secrets.DB_DATABASE}}"
           set_env_var "DB_USERNAME" "${{secrets.DB_USERNAME}}"
           set_env_var "DB_PASSWORD" "${{secrets.DB_PASSWORD}}"
+
+          mv .env env
           
           ls -la
 
@@ -301,15 +303,19 @@ jobs:
             mkdir -p $RELEASE_DIR
             cp -R $APP_DIR/tmp_deploy/$TIMESTAMP/* $RELEASE_DIR
 
+            #env file update/rename
+            mv env .env
+
             # Shared .env
-            #if [ -f "$APP_DIR/shared/.env" ]; then
-            #  ln -nfs $APP_DIR/shared/.env $RELEASE_DIR/.env
-            #fi
+            if [ -f "$APP_DIR/shared/.env" ]; then
+              ln -nfs $APP_DIR/shared/.env $RELEASE_DIR/.env
+            fi
 
             # Set permissions
             chmod -R 775 $RELEASE_DIR/storage $RELEASE_DIR/bootstrap/cache
             chown -R ${{ secrets.DEPLOY_USER || 'www-data' }}:${{ secrets.DEPLOY_USER || 'www-data' }} $RELEASE_DIR
 
+            
             # Run Laravel commands
             cd $RELEASE_DIR
             php artisan config:clear

@@ -314,9 +314,12 @@ jobs:
             sudo chown -R ${{ secrets.HOST_USERNAME }}:www-data $RELEASE_DIR
             sudo find $RELEASE_DIR -type d -exec chmod 775 {} \;
             sudo find $RELEASE_DIR -type f -exec chmod 664 {} \;
+            mkdir -p $RELEASE_DIR/storage/framework/cache
+            mkdir -p $RELEASE_DIR/storage/framework/sessions
+            mkdir -p $RELEASE_DIR/storage/framework/testing
             
             # Special permissions for storage and bootstrap
-            sudo chmod -R 777 $RELEASE_DIR/storage $RELEASE_DIR/bootstrap/cache $RELEASE_DIR/storage/framework/cache
+            sudo chmod -R 777 $RELEASE_DIR/storage $RELEASE_DIR/bootstrap/cache $RELEASE_DIR/storage/framework/cache $RELEASE_DIR/storage/framework/sessions $RELEASE_DIR/storage/framework/testing
             sudo find $RELEASE_DIR/storage -type d -exec chmod g+s {} \;
 
             # Handle node_modules separately

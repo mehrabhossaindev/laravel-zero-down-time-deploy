@@ -75,7 +75,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: laravel-app
-          path: artifact
+          path: | 
+            artifact/*
+            artifact/boostrap/cache/.gitkeep
+            artifact/storage/logs/.gitkeep
 
   test:
     runs-on: ubuntu-latest
@@ -230,7 +233,12 @@ jobs:
           path: .
 
       - name: Check .gitkeep Exists
-        run: ls -la storage/logs
+        run: | 
+          ls -la storage/logs
+          echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+          ls -la
+          echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+          ls -la /boostarp/cache
 
 
       - name: Restore .env Files

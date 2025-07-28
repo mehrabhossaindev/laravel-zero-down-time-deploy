@@ -230,7 +230,7 @@ jobs:
           path: .
 
       - name: Check .gitkeep Exists
-        run: ls -la artifact/storage/logs
+        run: ls -la storage/logs
 
 
       - name: Restore .env Files
